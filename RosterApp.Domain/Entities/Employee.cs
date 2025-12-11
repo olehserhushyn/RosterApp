@@ -10,6 +10,8 @@
         private readonly List<Shift> _shifts = new();
         public IReadOnlyCollection<Shift> Shifts => _shifts.AsReadOnly();
 
+        public string FullName => $"{FirstName} {LastName}";
+
         private Employee() { }
 
         public Employee(string firstName, string lastName, string email)

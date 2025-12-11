@@ -13,6 +13,8 @@ namespace RosterApp.Domain.Entities
         public int EmployeeId { get; private set; }
         public Employee Employee { get; private set; }
 
+        public double HoursWorked => (EndTime.ToTimeSpan() - StartTime.ToTimeSpan()).TotalHours;
+
         private Shift() { }
 
         public Shift(int employeeId, DateOnly date, TimeOnly startTime, TimeOnly endTime, string? notes = null)

@@ -1,7 +1,10 @@
 using Microsoft.EntityFrameworkCore;
+using RosterApp.API.Middlewares;
 using RosterApp.Application.Abstractions;
 using RosterApp.Application.Abstractions.Repositories.Commands;
 using RosterApp.Application.Abstractions.Repositories.Queries;
+using RosterApp.Application.Abstractions.Services;
+using RosterApp.Application.Services;
 using RosterApp.Infrastructure.Context;
 using RosterApp.Infrastructure.Repositories;
 using RosterApp.Infrastructure.Repositories.Commands;
@@ -30,6 +33,12 @@ builder.Services.AddScoped<IWeeklyTipsCommandRepository, WeeklyTipsCommandReposi
 
 builder.Services.AddScoped<IUnitOfWork, EfUnitOfWork>();
 
+// Services
+builder.Services.AddScoped<IEmployeeService, EmployeeService>();
+builder.Services.AddScoped<IShiftService, ShiftService>();
+builder.Services.AddScoped<ITipDistributionService, TipDistributionService>();
+builder.Services.AddScoped<ITipsService, TipsService>();
+
 builder.Services.AddControllers();
 // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
 builder.Services.AddOpenApi();
@@ -41,6 +50,8 @@ if (app.Environment.IsDevelopment())
 {
     app.MapOpenApi();
 }
+
+app.UseMiddleware<ExceptionHandlerMiddleware>();
 
 app.UseHttpsRedirection();
 

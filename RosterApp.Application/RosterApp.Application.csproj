@@ -10,4 +10,8 @@
     <ProjectReference Include="..\RosterApp.Domain\RosterApp.Domain.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Folder Include="DTOs\Currencis\" />
+  </ItemGroup>
+
 </Project>
