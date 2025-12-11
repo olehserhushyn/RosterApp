@@ -1,0 +1,6 @@
+@RosterApp.API_HostAddress = http://localhost:5229
+
+GET {{RosterApp.API_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
