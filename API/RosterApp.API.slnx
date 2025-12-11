@@ -1,0 +1,7 @@
+<Solution>
+  <Project Path="RosterApp.API/RosterApp.API.csproj" />
+  <Project Path="RosterApp.Application.Test/RosterApp.Application.Test.csproj" />
+  <Project Path="RosterApp.Application/RosterApp.Application.csproj" />
+  <Project Path="RosterApp.Domain/RosterApp.Domain.csproj" />
+  <Project Path="RosterApp.Infrastructure/RosterApp.Infrastructure.csproj" />
+</Solution>
