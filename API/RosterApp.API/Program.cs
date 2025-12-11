@@ -22,6 +22,17 @@ builder.Services.AddDbContext<ApplicationDbContext>(options =>
     options.UseSqlite(connectionString);
 });
 
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("DefaultPolicy",
+        policy =>
+        {
+            policy.AllowAnyOrigin()
+                  .AllowAnyHeader()
+                  .AllowAnyMethod();
+        });
+});
+
 // Repositories
 builder.Services.AddScoped<ICurrencyQueryRepository, CurrencyQueryRepository>();
 builder.Services.AddScoped<IEmployeeQueryRepository, EmployeeQueryRepository>();
@@ -60,6 +71,8 @@ builder.Services.AddSwaggerGen(options =>
 builder.Services.AddOpenApi();
 
 var app = builder.Build();
+
+app.UseCors("DefaultPolicy");
 
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
