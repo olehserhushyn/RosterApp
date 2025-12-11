@@ -16,7 +16,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\RosterApp.Domain\RosterApp.Domain.csproj" />
+    <ProjectReference Include="..\RosterApp.Application\RosterApp.Application.csproj" />
   </ItemGroup>
 
 </Project>
