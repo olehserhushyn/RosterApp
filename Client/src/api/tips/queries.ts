@@ -19,12 +19,13 @@ export function useCurrentWeekTipDistribution() {
 
 export function useWeekTipDistribution(params: TipDistributionRequest) {
   return useQuery({
-    queryKey: TIPS_QUERY_KEYS.currentWeek,
+    queryKey: TIPS_QUERY_KEYS.week(params),
     queryFn: async () => {
       const response = await agent.get<TipDistributionDto>(
         `/tips/distribution/week/${params.year}/${params.weekNumber}`
       );
       return response.data;
     },
+    enabled: !!params.year && !!params.weekNumber,
   });
 }

@@ -1,0 +1,22 @@
+version: "3.9"
+
+services:
+  api:
+    build:
+      context: ./API
+      dockerfile: Dockerfile
+    container_name: rosterapp-api
+    ports:
+      - "5000:5000"       # host:container
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+
+  client:
+    build:
+      context: ./Client
+      dockerfile: Dockerfile
+    container_name: rosterapp-client
+    ports:
+      - "3000:80"         # host:container
+    depends_on:
+      - api

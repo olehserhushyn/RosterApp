@@ -1,4 +1,4 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import agent from '../agent';
 import { EMPLOYEES_QUERY_KEYS } from '../employees/queries';
 import type { CreateShiftRequest, ShiftDto, UpdateShiftRequest } from '../../types/dtos/shifts';
@@ -8,17 +8,6 @@ export const SHIFTS_QUERY_KEYS = {
   employee: (employeeId: number) => ['shifts', 'employee', employeeId] as const,
   detail: (id: number) => ['shifts', id] as const,
 };
-
-// export function useEmployeeShifts(employeeId: number) {
-//   return useQuery({
-//     queryKey: SHIFTS_QUERY_KEYS.employee(employeeId),
-//     queryFn: async () => {
-//       const response = await agent.get<ShiftDto[]>(`/shifts/employee/${employeeId}`);
-//       return response.data;
-//     },
-//     enabled: !!employeeId,
-//   });
-// }
 
 export function useCreateShift() {
   const queryClient = useQueryClient();

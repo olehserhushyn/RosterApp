@@ -12,19 +12,32 @@ export function WeeklyTipsPage() {
   const [selectedWeekNumber, setSelectedWeekNumber] = useState<number>(getCurrentWeekNumber());
   const navigate = useNavigate();
 
-  const { data: currentWeekData } = useCurrentWeekTipDistribution();
+  // Get current week data for initial load
+  const { data: currentWeekData, isLoading: isLoadingCurrentWeek } =
+    useCurrentWeekTipDistribution();
 
-  const { data, isLoading, isError, error, refetch } = useWeekTipDistribution({
+  // Get data for the selected week
+  const {
+    data,
+    isLoading: isLoadingWeek,
+    isError,
+    error,
+    refetch,
+    isFetching,
+  } = useWeekTipDistribution({
     weekNumber: selectedWeekNumber,
     year: selectedYear,
   });
 
+  const isLoading = isLoadingCurrentWeek || isLoadingWeek || isFetching;
+
+  // Initialize with current week when currentWeekData is available
   useEffect(() => {
-    if (currentWeekData && !data) {
+    if (currentWeekData) {
       setSelectedYear(currentWeekData.year);
       setSelectedWeekNumber(currentWeekData.weekNumber);
     }
-  }, [currentWeekData, data]);
+  }, [currentWeekData]);
 
   const handlePreviousWeek = () => {
     if (selectedWeekNumber > 1) {
@@ -37,10 +50,19 @@ export function WeeklyTipsPage() {
   };
 
   const handleNextWeek = () => {
+    const currentYear = new Date().getFullYear();
+    const currentWeek = getCurrentWeekNumber();
     const maxWeeksInYear = getWeeksInYear(selectedYear);
+
+    // Only allow navigation to future weeks if we're in current year and week
+    if (selectedYear === currentYear && selectedWeekNumber === currentWeek) {
+      return; // Can't go to future
+    }
+
     if (selectedWeekNumber < maxWeeksInYear) {
       setSelectedWeekNumber(selectedWeekNumber + 1);
     } else {
+      // Go to first week of next year
       setSelectedYear(selectedYear + 1);
       setSelectedWeekNumber(1);
     }
@@ -51,18 +73,33 @@ export function WeeklyTipsPage() {
     const currentYear = new Date().getFullYear();
 
     if (selectedYear === currentYear) {
+      // For current year, calculate week number from offset
       const weekNumber = weekOffset === 0 ? currentWeek : currentWeek - weekOffset;
-      setSelectedWeekNumber(weekNumber);
+      setSelectedWeekNumber(Math.max(1, weekNumber));
     } else {
+      // For other years, calculate week number from offset
       const maxWeeks = getWeeksInYear(selectedYear);
       const weekNumber = maxWeeks - weekOffset + 1;
-      setSelectedWeekNumber(weekNumber);
+      setSelectedWeekNumber(Math.max(1, weekNumber));
     }
   };
 
   const handleYearChange = (year: number) => {
+    const currentYear = new Date().getFullYear();
+    const currentWeek = getCurrentWeekNumber();
+
     setSelectedYear(year);
-    setSelectedWeekNumber(year === new Date().getFullYear() ? getCurrentWeekNumber() : 1);
+
+    // When changing year, set appropriate week
+    if (year === currentYear) {
+      setSelectedWeekNumber(currentWeek);
+    } else if (year < currentYear) {
+      // For past years, set to last week
+      setSelectedWeekNumber(getWeeksInYear(year));
+    } else {
+      // For future years, set to first week
+      setSelectedWeekNumber(1);
+    }
   };
 
   const handleCurrentWeek = () => {
@@ -76,7 +113,10 @@ export function WeeklyTipsPage() {
     navigate(`employees/${employeeId}`);
   };
 
-  if (isLoading) {
+  // Use the data from the selected week, fall back to currentWeekData if needed
+  const displayData = data || currentWeekData;
+
+  if (isLoading && !displayData) {
     return (
       <Box
         display="flex"
@@ -108,7 +148,7 @@ export function WeeklyTipsPage() {
     );
   }
 
-  if (!data) {
+  if (!displayData) {
     return (
       <Alert severity="info">
         <Typography variant="h6">No data available</Typography>
@@ -122,7 +162,8 @@ export function WeeklyTipsPage() {
     );
   }
 
-  const startDate = new Date(data.weekStartDate);
+  // Calculate week range
+  const startDate = new Date(displayData.weekStartDate);
   const endDate = new Date(startDate);
   endDate.setDate(startDate.getDate() + 6);
 
@@ -135,10 +176,11 @@ export function WeeklyTipsPage() {
   };
 
   const weekRange = `${formatDate(startDate)} - ${formatDate(endDate)}`;
-  const totalTipsFormatted = `${data.currencySymbol}${data.totalTips.toFixed(2)}`;
-  const averagePerHour = data.totalTips / data.totalHours;
-  const totalEmployees = data.employeeShares.length;
+  const totalTipsFormatted = `${displayData.currencySymbol}${displayData.totalTips.toFixed(2)}`;
+  const averagePerHour = displayData.totalTips / displayData.totalHours;
+  const totalEmployees = displayData.employeeShares.length;
 
+  // Calculate the week offset for the WeekNavigation component
   const calculateWeekOffset = () => {
     const currentWeek = getCurrentWeekNumber();
     const currentYear = new Date().getFullYear();
@@ -151,14 +193,18 @@ export function WeeklyTipsPage() {
     }
   };
 
+  // Generate available years
   const getAvailableYears = () => {
     const currentYear = new Date().getFullYear();
     const years = [];
-    for (let i = currentYear - 5; i <= currentYear + 1; i++) {
+    for (let i = currentYear - 5; i <= currentYear; i++) {
       years.push(i);
     }
     return years;
   };
+
+  const isCurrentWeek =
+    selectedYear === new Date().getFullYear() && selectedWeekNumber === getCurrentWeekNumber();
 
   return (
     <Box>
@@ -195,29 +241,26 @@ export function WeeklyTipsPage() {
       <Grid container spacing={3}>
         <Grid item xs={12} md={4}>
           <WeeklySummaryCard
-            weekNumber={data.weekNumber}
-            year={data.year}
+            weekNumber={displayData.weekNumber}
+            year={displayData.year}
             weekRange={weekRange}
             totalTips={totalTipsFormatted}
-            totalHours={data.totalHours}
+            totalHours={displayData.totalHours}
             averagePerHour={averagePerHour}
             totalEmployees={totalEmployees}
-            currencySymbol={data.currencySymbol}
-            currencyCode={data.currencyCode}
-            isCurrentWeek={
-              selectedYear === new Date().getFullYear() &&
-              selectedWeekNumber === getCurrentWeekNumber()
-            }
+            currencySymbol={displayData.currencySymbol}
+            currencyCode={displayData.currencyCode}
+            isCurrentWeek={isCurrentWeek}
           />
         </Grid>
 
         <Grid item xs={12} md={8}>
           <EmployeeDistributionTable
-            employeeShares={data.employeeShares}
-            totalHours={data.totalHours}
+            employeeShares={displayData.employeeShares}
+            totalHours={displayData.totalHours}
             totalTips={totalTipsFormatted}
             totalEmployees={totalEmployees}
-            currencySymbol={data.currencySymbol}
+            currencySymbol={displayData.currencySymbol}
             onEmployeeClick={handleEmployeeClick}
           />
         </Grid>
