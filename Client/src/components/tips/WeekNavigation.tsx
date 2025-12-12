@@ -11,14 +11,7 @@ import {
   Tooltip,
   Divider,
 } from '@mui/material';
-import {
-  ChevronLeft,
-  ChevronRight,
-  CalendarToday,
-  Today,
-  ExpandMore,
-  ExpandLess,
-} from '@mui/icons-material';
+import { ChevronLeft, ChevronRight, CalendarToday, Today } from '@mui/icons-material';
 import { useState, useEffect } from 'react';
 import { getCurrentWeekNumber, getWeeksInYear } from '../../utils/weekUtils';
 
