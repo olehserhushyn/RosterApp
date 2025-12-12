@@ -3,6 +3,7 @@ using RosterApp.API.DTOs.Employees.Responses;
 using RosterApp.Application.Abstractions;
 using RosterApp.Application.Abstractions.Services;
 using RosterApp.Application.Common.Mappers;
+using RosterApp.Application.DTOs.Employees.Responses;
 using RosterApp.Domain.Entities;
 
 namespace RosterApp.Application.Services
@@ -55,10 +56,20 @@ namespace RosterApp.Application.Services
             await _unitOfWork.SaveChangesAsync();
         }
 
-        public async Task<EmployeeDto?> GetEmployeeByIdAsync(int id)
+        public async Task<EmployeeDetailsDto?> GetEmployeeByIdAsync(int id, int weekNumber, int year)
         {
             var employee = await _unitOfWork.EmployeeQueries.GetByIdAsync(id);
-            return employee != null ? EmployeeMapper.MapToDto(employee) : null;
+            if (employee == null)
+            {
+                throw new KeyNotFoundException($"Employee with ID {id} not found");
+            }
+
+            var shifts = await _unitOfWork.ShiftQueries.GetByWeekAndEmployeeAsync(id, weekNumber, year);
+
+            double totalHours = shifts.Sum(shift => (shift.EndTime - shift.StartTime).TotalHours);
+            var shiftDtos = shifts.Select(s => ShiftMapper.MapToDto(s, employee.FullName));
+
+            return employee != null ? EmployeeMapper.MapToDetailsDto(employee, totalHours, shiftDtos) : null;
         }
 
         public async Task<IEnumerable<EmployeeDto>> GetAllEmployeesAsync()

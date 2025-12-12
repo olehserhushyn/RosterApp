@@ -17,10 +17,12 @@ import {
 } from '@mui/material';
 import { AttachMoney } from '@mui/icons-material';
 import { useCurrentWeekTipDistribution } from '../api/tips/queries.ts';
+import { useNavigate } from 'react-router-dom';
 
 export function WeeklyTipsPage() {
   const { data, isLoading, isError, error } = useCurrentWeekTipDistribution();
   const theme = useTheme();
+  const navigate = useNavigate();
 
   if (isLoading) {
     return (
@@ -176,14 +178,14 @@ export function WeeklyTipsPage() {
                   </TableHead>
                   <TableBody>
                     {data.employeeShares.map((employee) => {
-                      const percentage = (employee.hoursWorked / data.totalHours) * 100;
                       const hourlyRate = employee.shareAmount / employee.hoursWorked;
 
                       return (
                         <TableRow
                           key={employee.employeeId}
+                          onClick={() => navigate(`employees/${employee.employeeId}`)}
                           hover
-                          sx={{ '&:last-child td': { borderBottom: 0 } }}
+                          sx={{ '&:last-child td': { borderBottom: 0 }, cursor: 'pointer' }}
                         >
                           <TableCell>
                             <Box>

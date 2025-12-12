@@ -57,5 +57,17 @@ namespace RosterApp.Infrastructure.Repositories.Queries
                 .AsNoTracking()
                 .ToListAsync();
         }
+
+        public async Task<IEnumerable<Shift>> GetByWeekAndEmployeeAsync(int employeeId, int weekNumber, int year)
+        {
+            var weekStartDateTime = System.Globalization.ISOWeek.ToDateTime(year, weekNumber, DayOfWeek.Monday);
+            var weekStart = DateOnly.FromDateTime(weekStartDateTime);
+            var weekEnd = weekStart.AddDays(6);
+
+            return await _set
+                .Where(s => s.Date >= weekStart && s.Date <= weekEnd && s.EmployeeId == employeeId)
+                .AsNoTracking()
+                .ToListAsync();
+        }
     }
 }

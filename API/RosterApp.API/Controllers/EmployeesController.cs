@@ -2,6 +2,8 @@
 using RosterApp.API.DTOs.Employees.Requests;
 using RosterApp.API.DTOs.Employees.Responses;
 using RosterApp.Application.Abstractions.Services;
+using RosterApp.Application.Common.Utils;
+using RosterApp.Application.DTOs.Employees.Responses;
 
 namespace RosterApp.API.Controllers
 {
@@ -24,9 +26,13 @@ namespace RosterApp.API.Controllers
         }
 
         [HttpGet("{id}")]
-        public async Task<ActionResult<EmployeeDto>> GetById(int id)
+        public async Task<ActionResult<EmployeeDetailsDto>> GetById(int id)
         {
-            var employee = await _employeeService.GetEmployeeByIdAsync(id);
+            var today = DateOnly.FromDateTime(DateTime.UtcNow);
+            var (year, weekNumber) = WeekUtils.GetWeekNumber(today);
+
+            var employee = await _employeeService.GetEmployeeByIdAsync(id, weekNumber, year);
+
             if (employee == null)
             {
                 return NotFound($"Employee with ID {id} not found");
