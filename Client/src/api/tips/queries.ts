@@ -27,5 +27,6 @@ export function useWeekTipDistribution(params: TipDistributionRequest) {
       return response.data;
     },
     enabled: !!params.year && !!params.weekNumber,
+    retry: 3,
   });
 }
