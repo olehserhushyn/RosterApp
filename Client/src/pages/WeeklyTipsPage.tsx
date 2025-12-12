@@ -1,28 +1,80 @@
-import {
-  Card,
-  CardContent,
-  CircularProgress,
-  Grid,
-  Typography,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
-  Paper,
-  Box,
-  Alert,
-  useTheme,
-} from '@mui/material';
-import { AttachMoney } from '@mui/icons-material';
-import { useCurrentWeekTipDistribution } from '../api/tips/queries.ts';
+import { Grid, Box, Typography, CircularProgress, Alert, Button } from '@mui/material';
+import { useCurrentWeekTipDistribution, useWeekTipDistribution } from '../api/tips/queries.ts';
 import { useNavigate } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import { WeekNavigation } from '../components/tips/WeekNavigation.tsx';
+import { WeeklySummaryCard } from '../components/tips/WeeklySummaryCard.tsx';
+import { EmployeeDistributionTable } from '../components/tips/EmployeeDistributionTable.tsx';
+import { getCurrentWeekNumber, getWeeksInYear } from '../utils/weekUtils';
 
 export function WeeklyTipsPage() {
-  const { data, isLoading, isError, error } = useCurrentWeekTipDistribution();
-  const theme = useTheme();
+  const [selectedYear, setSelectedYear] = useState<number>(new Date().getFullYear());
+  const [selectedWeekNumber, setSelectedWeekNumber] = useState<number>(getCurrentWeekNumber());
   const navigate = useNavigate();
+
+  const { data: currentWeekData } = useCurrentWeekTipDistribution();
+
+  const { data, isLoading, isError, error, refetch } = useWeekTipDistribution({
+    weekNumber: selectedWeekNumber,
+    year: selectedYear,
+  });
+
+  useEffect(() => {
+    if (currentWeekData && !data) {
+      setSelectedYear(currentWeekData.year);
+      setSelectedWeekNumber(currentWeekData.weekNumber);
+    }
+  }, [currentWeekData, data]);
+
+  const handlePreviousWeek = () => {
+    if (selectedWeekNumber > 1) {
+      setSelectedWeekNumber(selectedWeekNumber - 1);
+    } else {
+      // Go to last week of previous year
+      setSelectedYear(selectedYear - 1);
+      setSelectedWeekNumber(getWeeksInYear(selectedYear - 1));
+    }
+  };
+
+  const handleNextWeek = () => {
+    const maxWeeksInYear = getWeeksInYear(selectedYear);
+    if (selectedWeekNumber < maxWeeksInYear) {
+      setSelectedWeekNumber(selectedWeekNumber + 1);
+    } else {
+      setSelectedYear(selectedYear + 1);
+      setSelectedWeekNumber(1);
+    }
+  };
+
+  const handleWeekChange = (weekOffset: number) => {
+    const currentWeek = getCurrentWeekNumber();
+    const currentYear = new Date().getFullYear();
+
+    if (selectedYear === currentYear) {
+      const weekNumber = weekOffset === 0 ? currentWeek : currentWeek - weekOffset;
+      setSelectedWeekNumber(weekNumber);
+    } else {
+      const maxWeeks = getWeeksInYear(selectedYear);
+      const weekNumber = maxWeeks - weekOffset + 1;
+      setSelectedWeekNumber(weekNumber);
+    }
+  };
+
+  const handleYearChange = (year: number) => {
+    setSelectedYear(year);
+    setSelectedWeekNumber(year === new Date().getFullYear() ? getCurrentWeekNumber() : 1);
+  };
+
+  const handleCurrentWeek = () => {
+    const currentWeek = getCurrentWeekNumber();
+    const currentYear = new Date().getFullYear();
+    setSelectedYear(currentYear);
+    setSelectedWeekNumber(currentWeek);
+  };
+
+  const handleEmployeeClick = (employeeId: number) => {
+    navigate(`employees/${employeeId}`);
+  };
 
   if (isLoading) {
     return (
@@ -49,6 +101,9 @@ export function WeeklyTipsPage() {
           Failed to load data
         </Typography>
         <Typography variant="body2">Error: {(error as Error).message}</Typography>
+        <Button onClick={() => refetch()} sx={{ mt: 1 }}>
+          Retry
+        </Button>
       </Alert>
     );
   }
@@ -58,196 +113,113 @@ export function WeeklyTipsPage() {
       <Alert severity="info">
         <Typography variant="h6">No data available</Typography>
         <Typography variant="body2">
-          There's no tip distribution data for the current week.
+          There's no tip distribution data for the selected week.
         </Typography>
+        <Button onClick={handleCurrentWeek} sx={{ mt: 1 }}>
+          Go to Current Week
+        </Button>
       </Alert>
     );
   }
 
-  const weekStartDate = new Date(data.weekStartDate).toLocaleDateString('en-US', {
-    weekday: 'long',
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric',
-  });
+  const startDate = new Date(data.weekStartDate);
+  const endDate = new Date(startDate);
+  endDate.setDate(startDate.getDate() + 6);
+
+  const formatDate = (date: Date) => {
+    return date.toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric',
+    });
+  };
+
+  const weekRange = `${formatDate(startDate)} - ${formatDate(endDate)}`;
   const totalTipsFormatted = `${data.currencySymbol}${data.totalTips.toFixed(2)}`;
   const averagePerHour = data.totalTips / data.totalHours;
   const totalEmployees = data.employeeShares.length;
 
+  const calculateWeekOffset = () => {
+    const currentWeek = getCurrentWeekNumber();
+    const currentYear = new Date().getFullYear();
+
+    if (selectedYear === currentYear) {
+      return selectedWeekNumber === currentWeek ? 0 : currentWeek - selectedWeekNumber;
+    } else {
+      const maxWeeksInSelectedYear = getWeeksInYear(selectedYear);
+      return maxWeeksInSelectedYear - selectedWeekNumber + 1;
+    }
+  };
+
+  const getAvailableYears = () => {
+    const currentYear = new Date().getFullYear();
+    const years = [];
+    for (let i = currentYear - 5; i <= currentYear + 1; i++) {
+      years.push(i);
+    }
+    return years;
+  };
+
   return (
     <Box>
-      {/* Header */}
       <Box sx={{ mb: 4 }}>
-        <Typography variant="h4" component="h1" gutterBottom sx={{ fontWeight: 700 }}>
-          Weekly Tip Distribution
-        </Typography>
-        <Typography variant="body1" color="text.secondary">
-          View how tips are distributed among employees for the current week
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+          <Typography variant="h4" component="h1" sx={{ fontWeight: 700 }}>
+            Weekly Tip Distribution
+          </Typography>
+        </Box>
+
+        <WeekNavigation
+          weekRange={weekRange}
+          weekNumber={selectedWeekNumber}
+          year={selectedYear}
+          selectedWeekOffset={calculateWeekOffset()}
+          selectedYear={selectedYear}
+          onPreviousWeek={handlePreviousWeek}
+          onNextWeek={handleNextWeek}
+          onWeekChange={handleWeekChange}
+          onYearChange={handleYearChange}
+          onCurrentWeek={handleCurrentWeek}
+          isLoading={isLoading}
+          totalWeeksInYear={getWeeksInYear(selectedYear)}
+          currentWeekNumber={getCurrentWeekNumber()}
+          currentYear={new Date().getFullYear()}
+          availableYears={getAvailableYears()}
+        />
+
+        <Typography variant="body1" color="text.secondary" sx={{ mt: 2 }}>
+          View how tips are distributed among employees for the selected week
         </Typography>
       </Box>
 
-      {/* Main Content - Card and Table */}
       <Grid container spacing={3}>
-        {/* Summary Card */}
         <Grid item xs={12} md={4}>
-          <Card elevation={3} sx={{ height: '100%', borderRadius: 2 }}>
-            <CardContent>
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
-                <AttachMoney fontSize="small" color="primary" />
-                <Typography variant="overline" color="text.secondary">
-                  Week {data.weekNumber}, {data.year}
-                </Typography>
-              </Box>
-
-              <Typography variant="h6" color="text.secondary" gutterBottom>
-                {weekStartDate}
-              </Typography>
-
-              <Typography variant="h3" sx={{ fontWeight: 700, mb: 3 }}>
-                {totalTipsFormatted}
-              </Typography>
-
-              <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
-                <Typography variant="body2" color="text.secondary">
-                  Total Hours:
-                </Typography>
-                <Typography variant="body2" sx={{ fontWeight: 500 }}>
-                  {data.totalHours.toFixed(1)}
-                </Typography>
-              </Box>
-
-              <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
-                <Typography variant="body2" color="text.secondary">
-                  Avg per Hour:
-                </Typography>
-                <Typography variant="body2" sx={{ fontWeight: 500 }}>
-                  {data.currencySymbol}
-                  {averagePerHour.toFixed(2)}
-                </Typography>
-              </Box>
-
-              <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
-                <Typography variant="body2" color="text.secondary">
-                  Employees:
-                </Typography>
-                <Typography variant="body2" sx={{ fontWeight: 500 }}>
-                  {totalEmployees}
-                </Typography>
-              </Box>
-
-              <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
-                <Typography variant="body2" color="text.secondary">
-                  Currency:
-                </Typography>
-                <Typography variant="body2" sx={{ fontWeight: 500 }}>
-                  {data.currencyCode}
-                </Typography>
-              </Box>
-            </CardContent>
-          </Card>
+          <WeeklySummaryCard
+            weekNumber={data.weekNumber}
+            year={data.year}
+            weekRange={weekRange}
+            totalTips={totalTipsFormatted}
+            totalHours={data.totalHours}
+            averagePerHour={averagePerHour}
+            totalEmployees={totalEmployees}
+            currencySymbol={data.currencySymbol}
+            currencyCode={data.currencyCode}
+            isCurrentWeek={
+              selectedYear === new Date().getFullYear() &&
+              selectedWeekNumber === getCurrentWeekNumber()
+            }
+          />
         </Grid>
 
-        {/* Distribution Table */}
         <Grid item xs={12} md={8}>
-          <Card elevation={2} sx={{ borderRadius: 2, overflow: 'hidden' }}>
-            <CardContent sx={{ p: 0 }}>
-              <Box sx={{ p: 3, pb: 2 }}>
-                <Typography variant="h6" sx={{ fontWeight: 600 }}>
-                  Employee Distribution
-                </Typography>
-                <Typography variant="body2" color="text.secondary">
-                  Tip shares based on hours worked
-                </Typography>
-              </Box>
-
-              <TableContainer component={Paper} elevation={0}>
-                <Table>
-                  <TableHead>
-                    <TableRow sx={{ backgroundColor: theme.palette.grey[50] }}>
-                      <TableCell sx={{ fontWeight: 600 }}>Employee</TableCell>
-                      <TableCell align="right" sx={{ fontWeight: 600 }}>
-                        Hours
-                      </TableCell>
-                      <TableCell align="right" sx={{ fontWeight: 600 }}>
-                        Hourly Rate
-                      </TableCell>
-                      <TableCell align="right" sx={{ fontWeight: 600 }}>
-                        Tip Share
-                      </TableCell>
-                    </TableRow>
-                  </TableHead>
-                  <TableBody>
-                    {data.employeeShares.map((employee) => {
-                      const hourlyRate = employee.shareAmount / employee.hoursWorked;
-
-                      return (
-                        <TableRow
-                          key={employee.employeeId}
-                          onClick={() => navigate(`employees/${employee.employeeId}`)}
-                          hover
-                          sx={{ '&:last-child td': { borderBottom: 0 }, cursor: 'pointer' }}
-                        >
-                          <TableCell>
-                            <Box>
-                              <Typography variant="body1" sx={{ fontWeight: 500 }}>
-                                {employee.employeeName}
-                              </Typography>
-                            </Box>
-                          </TableCell>
-                          <TableCell align="right">
-                            <Typography sx={{ fontWeight: 500 }}>
-                              {employee.hoursWorked.toFixed(1)}
-                            </Typography>
-                          </TableCell>
-                          <TableCell align="right">
-                            <Typography sx={{ fontWeight: 500 }}>
-                              {data.currencySymbol}
-                              {hourlyRate.toFixed(2)}
-                            </Typography>
-                          </TableCell>
-                          <TableCell align="right">
-                            <Typography sx={{ fontWeight: 600, color: theme.palette.success.dark }}>
-                              {data.currencySymbol}
-                              {employee.shareAmount.toFixed(2)}
-                            </Typography>
-                          </TableCell>
-                        </TableRow>
-                      );
-                    })}
-                  </TableBody>
-                </Table>
-              </TableContainer>
-
-              {/* Table Footer */}
-              <Box
-                sx={{
-                  p: 2,
-                  backgroundColor: theme.palette.grey[50],
-                  borderTop: `1px solid ${theme.palette.divider}`,
-                }}
-              >
-                <Box display="flex" justifyContent="space-between" alignItems="center">
-                  <Typography variant="body2" color="text.secondary">
-                    {totalEmployees} employees
-                  </Typography>
-                  <Box display="flex" gap={3}>
-                    <Typography variant="body2">
-                      <Box component="span" sx={{ fontWeight: 600 }}>
-                        Total Hours:{' '}
-                      </Box>
-                      {data.totalHours.toFixed(1)}
-                    </Typography>
-                    <Typography variant="body2">
-                      <Box component="span" sx={{ fontWeight: 600 }}>
-                        Total Distributed:{' '}
-                      </Box>
-                      {totalTipsFormatted}
-                    </Typography>
-                  </Box>
-                </Box>
-              </Box>
-            </CardContent>
-          </Card>
+          <EmployeeDistributionTable
+            employeeShares={data.employeeShares}
+            totalHours={data.totalHours}
+            totalTips={totalTipsFormatted}
+            totalEmployees={totalEmployees}
+            currencySymbol={data.currencySymbol}
+            onEmployeeClick={handleEmployeeClick}
+          />
         </Grid>
       </Grid>
     </Box>

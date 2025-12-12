@@ -16,3 +16,8 @@ export interface TipDistributionDto {
   totalHours: number;
   employeeShares: EmployeeTipShareDto[];
 }
+
+export interface TipDistributionRequest {
+  weekNumber: number;
+  year: number;
+}
