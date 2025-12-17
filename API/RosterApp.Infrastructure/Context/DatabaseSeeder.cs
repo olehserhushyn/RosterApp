@@ -19,36 +19,41 @@ namespace RosterApp.Infrastructure.Context
 
         public async Task SeedAsync(CancellationToken cancellationToken = default)
         {
-            // If we already have employees, assume DB is seeded
-            if (await _dbContext.Employees.AnyAsync(cancellationToken))
+            if (!await _dbContext.Currencies.AnyAsync(cancellationToken))
             {
-                return;
+                var eur = new Currency("EUR", "€", "Euro");
+                var usd = new Currency("USD", "$", "US Dollar");
+                var gbp = new Currency("GBP", "£", "British Pound");
+
+                _dbContext.Currencies.AddRange(eur, usd, gbp);
+                await _dbContext.SaveChangesAsync(cancellationToken);
             }
 
-            // ========== CURRENCIES ==========
-            var eur = new Currency("EUR", "€", "Euro");
-            var usd = new Currency("USD", "$", "US Dollar");
-            var gbp = new Currency("GBP", "£", "British Pound");
+            if (!await _dbContext.Employees.AnyAsync(cancellationToken))
+            {
+                var alice = new Employee("Alice", "Murphy", "alice@example.com");
+                var bob = new Employee("Bob", "Ryan", "bob@example.com");
+                var charlie = new Employee("Charlie", "Nolan", "charlie@example.com");
+                var diana = new Employee("Diana", "Kelly", "diana@example.com");
+                var ethan = new Employee("Ethan", "Walsh", "ethan@example.com");
 
-            _dbContext.Currencies.AddRange(eur, usd, gbp);
-            await _dbContext.SaveChangesAsync(cancellationToken);
+                _dbContext.Employees.AddRange(alice, bob, charlie, diana, ethan);
+                await _dbContext.SaveChangesAsync(cancellationToken);
+            }
+ 
+            var employees = await _dbContext.Employees.AsNoTracking().ToListAsync(cancellationToken);
+            var aliceEmp = employees.First(e => e.Email == "alice@example.com");
+            var bobEmp = employees.First(e => e.Email == "bob@example.com");
+            var ethanEmp = employees.First(e => e.Email == "ethan@example.com");
 
-            // ========== EMPLOYEES ==========
-            var alice = new Employee("Alice", "Murphy", "alice@example.com");
-            var bob = new Employee("Bob", "Ryan", "bob@example.com");
-            var charlie = new Employee("Charlie", "Nolan", "charlie@example.com");
-            var diana = new Employee("Diana", "Kelly", "diana@example.com");
-            var ethan = new Employee("Ethan", "Walsh", "ethan@example.com");
+            var eurId = await _dbContext.Currencies
+                .AsNoTracking()
+                .Where(c => c.Code == "EUR")
+                .Select(c => c.Id)
+                .SingleAsync(cancellationToken);
 
-            _dbContext.Employees.AddRange(alice, bob, charlie, diana, ethan);
-            await _dbContext.SaveChangesAsync(cancellationToken);
-
-            // ========== WEEKLY TIPS + SHIFTS FOR MULTIPLE WEEKS ==========
-
-            // Let's generate, say, last 8 weeks relative to "today"
             var today = DateOnly.FromDateTime(DateTime.UtcNow);
 
-            // Find Monday of the current week
             int diff = (7 + (today.DayOfWeek - DayOfWeek.Monday)) % 7;
             var currentWeekStart = today.AddDays(-diff);
 
@@ -57,60 +62,71 @@ namespace RosterApp.Infrastructure.Context
             for (int i = 0; i < 8; i++)
             {
                 var weekStart = currentWeekStart.AddDays(-7 * i);
-                var weekDateTime = weekStart.ToDateTime(TimeOnly.MinValue);
+                var weekStartDateTime = weekStart.ToDateTime(TimeOnly.MinValue);
 
-                int year = weekDateTime.Year;
-                int weekNumber = System.Globalization.ISOWeek.GetWeekOfYear(weekDateTime);
+                int isoYear = System.Globalization.ISOWeek.GetYear(weekStartDateTime);
+                int weekNumber = System.Globalization.ISOWeek.GetWeekOfYear(weekStartDateTime);
 
-                // Total tips: between 200 and 600
-                var totalTips = 200m + (decimal)random.Next(0, 400);
+                bool weeklyTipsExists = await _dbContext.WeeklyTips.AnyAsync(w =>
+                    w.WeekNumber == weekNumber &&
+                    w.Year == isoYear &&
+                    w.WeekStartDate == weekStart, cancellationToken);
 
-                var weeklyTips = new WeeklyTips(
-                    weekNumber,
-                    year,
-                    weekStart,
-                    eur.Id,          // use EUR for all demo tips
-                    totalTips
-                );
-
-                _dbContext.WeeklyTips.Add(weeklyTips);
-
-                // Some demo shifts for that week:
-                // Alice: 2 shifts, Bob: 1 shift, Ethan: 1 shift, etc.
-
-                var shifts = new List<Shift>
+                if (!weeklyTipsExists)
                 {
-                    new Shift(
-                        alice.Id,
-                        weekStart,                // Monday
-                        new TimeOnly(9, 0),
-                        new TimeOnly(17, 0),
-                        "Alice full day"
-                    ),
-                    new Shift(
-                        alice.Id,
-                        weekStart.AddDays(1),     // Tuesday
-                        new TimeOnly(9, 0),
-                        new TimeOnly(13, 0),
-                        "Alice half day"
-                    ),
-                    new Shift(
-                        bob.Id,
-                        weekStart.AddDays(2),     // Wednesday
-                        new TimeOnly(12, 0),
-                        new TimeOnly(20, 0),
-                        "Bob evening shift"
-                    ),
-                    new Shift(
-                        ethan.Id,
-                        weekStart.AddDays(4),     // Friday
-                        new TimeOnly(16, 0),
-                        new TimeOnly(23, 0),
-                        "Ethan late shift"
-                    )
-                };
+                    var totalTips = 200m + (decimal)random.Next(0, 400);
 
-                _dbContext.Shifts.AddRange(shifts);
+                    var weeklyTips = new WeeklyTips(
+                        weekNumber,
+                        isoYear,
+                        weekStart,
+                        eurId,
+                        totalTips
+                    );
+
+                    _dbContext.WeeklyTips.Add(weeklyTips);
+                }
+
+                bool shiftsExistForWeek = await _dbContext.Shifts.AnyAsync(s =>
+                    s.Date >= weekStart &&
+                    s.Date <= weekStart.AddDays(6), cancellationToken);
+
+                if (!shiftsExistForWeek)
+                {
+                    var shifts = new List<Shift>
+            {
+                new Shift(
+                    aliceEmp.Id,
+                    weekStart,                // Monday
+                    new TimeOnly(9, 0),
+                    new TimeOnly(17, 0),
+                    "Alice full day"
+                ),
+                new Shift(
+                    aliceEmp.Id,
+                    weekStart.AddDays(1),     // Tuesday
+                    new TimeOnly(9, 0),
+                    new TimeOnly(13, 0),
+                    "Alice half day"
+                ),
+                new Shift(
+                    bobEmp.Id,
+                    weekStart.AddDays(2),     // Wednesday
+                    new TimeOnly(12, 0),
+                    new TimeOnly(20, 0),
+                    "Bob evening shift"
+                ),
+                new Shift(
+                    ethanEmp.Id,
+                    weekStart.AddDays(4),     // Friday
+                    new TimeOnly(16, 0),
+                    new TimeOnly(23, 0),
+                    "Ethan late shift"
+                )
+            };
+
+                    _dbContext.Shifts.AddRange(shifts);
+                }
             }
 
             await _dbContext.SaveChangesAsync(cancellationToken);
