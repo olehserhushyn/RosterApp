@@ -1,0 +1,168 @@
+<div class="dashboard-container">
+  <!-- Loading Spinner -->
+  <!-- <div *ngIf="loading()" class="loading-overlay">
+    <p-progressSpinner ariaLabel="loading"></p-progressSpinner>
+  </div> -->
+
+  <!-- Error Message -->
+  <div *ngIf="error()" class="error-container">
+    <p-message severity="error" [text]="error() ?? ''"></p-message>
+  </div>
+
+  <!-- Main Content -->
+  <div *ngIf="displayData() as data">
+    <!-- Week Navigation -->
+    <p-toolbar class="week-navigation">
+      <div class="p-toolbar-group-start">
+        <button
+          pButton
+          icon="pi pi-chevron-left"
+          class="p-button-rounded p-button-outlined"
+          (click)="decrementWeek()"
+          [disabled]="selectedWeekNumber() <= 1"
+        ></button>
+      </div>
+
+      <div class="p-toolbar-group-center">
+        <div class="week-display">
+          <h2>Week {{ selectedWeekNumber() }}, {{ selectedYear() }}</h2>
+          <p-tag
+            *ngIf="data?.weekStartDate"
+            [value]="(data?.weekStartDate | date : 'MMM d') ?? ''"
+            icon="pi pi-calendar"
+            class="date-tag"
+          ></p-tag>
+        </div>
+      </div>
+
+      <div class="p-toolbar-group-end">
+        <button
+          pButton
+          icon="pi pi-chevron-right"
+          class="p-button-rounded p-button-outlined"
+          (click)="incrementWeek()"
+          [disabled]="selectedWeekNumber() >= 53"
+        ></button>
+      </div>
+    </p-toolbar>
+
+    <!-- Stats Cards -->
+    <div class="stats-cards">
+      <p-card class="stat-card">
+        <div class="card-content">
+          <i class="pi pi-money-bill stat-icon" style="color: #10b981"></i>
+          <div>
+            <div class="stat-value">
+              {{ data!.totalTips | currency : data!.currencyCode : 'symbol' }}
+            </div>
+            <div class="stat-label">Total Tips</div>
+          </div>
+        </div>
+      </p-card>
+
+      <p-card class="stat-card">
+        <div class="card-content">
+          <i class="pi pi-clock stat-icon" style="color: #3b82f6"></i>
+          <div>
+            <div class="stat-value">{{ data!.totalHours }}</div>
+            <div class="stat-label">Total Hours</div>
+          </div>
+        </div>
+      </p-card>
+
+      <p-card class="stat-card">
+        <div class="card-content">
+          <i class="pi pi-users stat-icon" style="color: #8b5cf6"></i>
+          <div>
+            <div class="stat-value">{{ data!.employeeShares.length }}</div>
+            <div class="stat-label">Employees</div>
+          </div>
+        </div>
+      </p-card>
+
+      <p-card class="stat-card">
+        <div class="card-content">
+          <i class="pi pi-chart-pie stat-icon" style="color: #f59e0b"></i>
+          <div>
+            <div class="stat-value">
+              {{ data!.totalTips / data!.totalHours | currency : data!.currencyCode : 'symbol' }}
+            </div>
+            <div class="stat-label">Tip/Hour</div>
+          </div>
+        </div>
+      </p-card>
+    </div>
+
+    <!-- Distribution Chart -->
+    <div class="chart-section">
+      <p-card header="Tip Distribution">
+        <div *ngIf="data!.employeeShares.length > 0; else noData" class="chart-container">
+          <!-- <p-chart
+            type="pie"
+            [data]="getChartData()"
+            [options]="chartOptions"
+            width="400"
+            height="400"
+          ></p-chart> -->
+        </div>
+        <ng-template #noData>
+          <div class="no-data">
+            <i class="pi pi-chart-line" style="font-size: 2rem; color: #6b7280"></i>
+            <p>No tip distribution data available</p>
+          </div>
+        </ng-template>
+      </p-card>
+    </div>
+
+    <!-- Employee Distribution Table -->
+    <div class="table-section">
+      <p-card header="Employee Breakdown">
+        <p-table
+          [value]="data!.employeeShares"
+          [paginator]="true"
+          [rows]="10"
+          [showCurrentPageReport]="true"
+          currentPageReportTemplate="Showing {first} to {last} of {totalRecords} entries"
+          class="distribution-table"
+          [loading]="loading()"
+        >
+          <ng-template pTemplate="header">
+            <tr>
+              <th>Employee</th>
+              <th>Hours Worked</th>
+              <th>Share %</th>
+              <th>Share Amount</th>
+            </tr>
+          </ng-template>
+          <ng-template pTemplate="body" let-employee let-i="rowIndex">
+            <tr>
+              <td>
+                <div class="employee-cell">
+                  <div class="color-dot"></div>
+                  <span>{{ employee.employeeName }}</span>
+                </div>
+              </td>
+              <td>{{ employee.hoursWorked }}</td>
+              <td>
+                <p-tag [value]="employee.sharePercentage + '%'"></p-tag>
+              </td>
+              <td>
+                <div class="amount-cell">
+                  <span class="currency-symbol">{{ data!.currencySymbol }}</span>
+                  <span class="amount">{{ employee.shareAmount.toFixed(2) }}</span>
+                </div>
+              </td>
+            </tr>
+          </ng-template>
+        </p-table>
+      </p-card>
+    </div>
+  </div>
+
+  <!-- No Data State -->
+  <!-- <div *ngIf="!loading() && !displayData() && !error()" class="no-data-state">
+    <i class="pi pi-inbox" style="font-size: 3rem; color: #6b7280"></i>
+    <h3>No Data Available</h3>
+    <p>Select a week to view tip distribution</p>
+  </div> -->
+</div>
